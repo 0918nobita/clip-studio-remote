@@ -1,0 +1,21 @@
+{
+  "name": "clip-studio-remote",
+  "version": "0.1.0",
+  "author": "0918nobita <nobita.0918@gmail.com>",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build": "esbuild --bundle --minify --outfile=client/bundle.js client/sender.js",
+    "start": "node serve.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.8.5"
+  },
+  "dependencies": {
+    "koa": "^2.13.0",
+    "koa-static": "^5.0.0",
+    "sendkeys-macos": "^1.1.2",
+    "socket.io": "^3.0.1",
+    "socket.io-client": "^3.0.1"
+  }
+}
