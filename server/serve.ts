@@ -1,8 +1,8 @@
 import { spawn } from 'child_process';
-import * as path from 'path';
 import { fastify } from 'fastify';
 import staticPlugin from 'fastify-static';
 import webSocketPlugin from 'fastify-websocket';
+import * as path from 'path';
 
 const proc = spawn(`osascript`, ['-l', 'JavaScript', '-i']);
 
