@@ -1,26 +1,20 @@
-import { BehaviorSubject, fromEvent, merge } from 'rxjs';
-import { filter, mapTo } from 'rxjs/operators';
+import { fromEvent, merge } from 'rxjs';
+import { filter, mapTo, mergeMap } from 'rxjs/operators';
 
-import { WebSocketState } from './wsState';
+import { createWsStateStream, WebSocketState } from './webSocket';
 
 const webSocket = new WebSocket('ws://localhost:8080/websocket');
 
-const wsState$ = new BehaviorSubject<WebSocketState>(WebSocketState.Connecting);
-
-fromEvent(webSocket, 'open').subscribe(() =>
-    wsState$.next(WebSocketState.Open)
-);
-
-fromEvent(webSocket, 'close').subscribe(() =>
-    wsState$.next(WebSocketState.Closed)
-);
+const wsState$ = createWsStateStream(webSocket);
 
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 const penBtn = document.getElementById('pen')!;
 const eraserBtn = document.getElementById('eraser')!;
 /* eslint-enable @typescript-eslint/no-non-null-assertion */
 
-const whenWsIsOpen = filter(() => wsState$.value === WebSocketState.Open);
+const whenWsIsOpen = mergeMap(() =>
+    wsState$.pipe(filter((s) => s === WebSocketState.Open))
+);
 
 const pen$ = fromEvent(penBtn, 'click').pipe(whenWsIsOpen, mapTo('p'));
 
