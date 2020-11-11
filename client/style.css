@@ -1,0 +1,49 @@
+*,
+::before,
+::after {
+  box-sizing: border-box;
+}
+
+* {
+  padding: 0;
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", "Helvetica Neue", "Hiragino Kaku Gothic ProN", メイリオ, meiryo, sans-serif;
+}
+
+#title {
+  padding: 1em;
+  font-size: 1.4em;
+}
+
+#container {
+  display: flex;
+  flex-direction: column;
+}
+
+#pen {
+  position: relative;
+  background-color: #8abcd7;
+  font-size: 2em;
+  height: 40vh;
+}
+
+#pen span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+#eraser {
+  position: relative;
+  background-color: #d88080;
+  font-size: 2em;
+  height: 40vh;
+}
+
+#eraser span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
