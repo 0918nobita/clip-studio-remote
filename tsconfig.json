@@ -70,6 +70,6 @@
   "include": [
     "server",
     "client",
-    "scripts"
+    "."
   ]
 }
