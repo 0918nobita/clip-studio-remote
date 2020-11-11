@@ -1,2 +1,3 @@
-node_modules
-client/bundle.js
+/node_modules
+/client/bundle.js
+/server/serve.js
