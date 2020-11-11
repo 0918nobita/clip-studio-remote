@@ -1,8 +1,10 @@
+import { spawn } from 'child_process';
 import * as path from 'path';
 import { fastify } from 'fastify';
 import staticPlugin from 'fastify-static';
 import webSocketPlugin from 'fastify-websocket';
-import sendKeys = require('sendkeys-macos');
+
+const proc = spawn(`osascript`, ['-l', 'JavaScript', '-i']);
 
 const app = fastify();
 
@@ -14,7 +16,8 @@ app.register(webSocketPlugin);
 
 app.get('/websocket', { websocket: true }, (conn) => {
     conn.socket.on('message', (keystrokes: string) => {
-        sendKeys(void 0, keystrokes);
+        const char = keystrokes.charAt(0);
+        proc.stdin.write(`Application('System Events').keystroke('${char}')\n`);
     });
 });
 
