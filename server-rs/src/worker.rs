@@ -15,13 +15,16 @@ impl Worker {
             let message = receiver.lock().unwrap().recv().unwrap();
             match message {
                 Message::NewJob(job) => {
+                    #[cfg(debug_assertions)]
                     println!("Worker {} got a job; executing.", id);
 
                     job.call_box();
 
+                    #[cfg(debug_assertions)]
                     println!("Worker {} completed its job.", id);
                 }
                 Message::Terminate => {
+                    #[cfg(debug_assertions)]
                     println!("Worker {} was told to terminate.", id);
                     break;
                 }

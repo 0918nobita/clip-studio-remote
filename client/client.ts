@@ -3,7 +3,7 @@ import { filter, mapTo, mergeMap } from 'rxjs/operators';
 
 import { createWsStateStream, WebSocketState } from './webSocket';
 
-const webSocket = new WebSocket('ws://localhost:8080/websocket');
+const webSocket = new WebSocket(`ws://localhost:${location.port}/websocket`);
 
 const wsState$ = createWsStateStream(webSocket);
 

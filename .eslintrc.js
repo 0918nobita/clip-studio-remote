@@ -10,7 +10,7 @@ module.exports = {
     rules: {
         'simple-import-sort/sort': 'error',
     },
-    ignorePatterns: ['server/serve.js', 'client/bundle.js'],
+    ignorePatterns: ['client/bundle.js'],
     overrides: [
         {
             files: ['**/*.ts'],

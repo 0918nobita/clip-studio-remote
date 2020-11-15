@@ -8,7 +8,7 @@ use sha1::{Digest, Sha1};
 use std::fs;
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};
-// use std::process::Command;
+use std::process::{Command, Stdio};
 
 extern crate server;
 use server::thread_pool::ThreadPool;
@@ -34,6 +34,7 @@ fn main() {
     let matches = app.get_matches();
 
     let port = matches.value_of("port").unwrap_or("8080");
+    let send_keys = matches.is_present("send-keys");
 
     let listener = TcpListener::bind(format!("127.0.0.1:{}", port)).unwrap();
     let pool = ThreadPool::new(4);
@@ -41,13 +42,13 @@ fn main() {
     for stream in listener.incoming() {
         let stream = stream.unwrap();
 
-        pool.execute(|| {
-            handle_connection(stream);
+        pool.execute(move || {
+            handle_connection(stream, send_keys);
         });
     }
 }
 
-fn handle_connection(mut stream: TcpStream) {
+fn handle_connection(mut stream: TcpStream, send_keys: bool) {
     let mut buf = [0; 1024];
     stream.read(&mut buf).unwrap();
     // println!("{}", String::from_utf8_lossy(&buf));
@@ -66,7 +67,7 @@ fn handle_connection(mut stream: TcpStream) {
     } else if buf.starts_with(websocket) {
         if let Some(key) = parse_ws_key(&buf) {
             send_back_handshake(&mut stream, key);
-            receive_ws_messages(&mut stream);
+            receive_ws_messages(&mut stream, send_keys);
         } else {
             serve_404_page(&mut stream);
         }
@@ -139,7 +140,18 @@ fn send_back_handshake(stream: &mut TcpStream, key: String) {
     stream.flush().unwrap();
 }
 
-fn receive_ws_messages(stream: &mut TcpStream) {
+fn receive_ws_messages(stream: &mut TcpStream, send_keys: bool) {
+    let mut child_stdin = if let Ok(child_process) = Command::new("osascript")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .args(&["-l", "JavaScript", "-i"])
+        .spawn()
+    {
+        child_process.stdin.unwrap()
+    } else {
+        panic!("Faild to start a process for executing osascript")
+    };
+
     loop {
         let mut msg_buf = [0; 1024];
         if stream.read(&mut msg_buf).is_ok() {
@@ -150,12 +162,27 @@ fn receive_ws_messages(stream: &mut TcpStream) {
             if opcode == 1 {
                 let payload_length = (msg_buf[1] % 128) as usize;
                 let mask: Vec<u8> = msg_buf[2..=5].to_vec();
+
                 let mut payload = Vec::<u8>::with_capacity(payload_length);
                 for i in 0..payload_length {
                     payload.push(msg_buf[6 + i] ^ mask[i % 4]);
                 }
-                println!("Received: {}", String::from_utf8(payload).unwrap().trim());
+                let payload = String::from_utf8(payload).unwrap();
+                let payload = payload.trim();
+
+                if cfg!(target_os = "macos") && send_keys {
+                    child_stdin
+                        .write(
+                            format!("Application('System Events').keystroke(\"{}\")\n", payload)
+                                .as_ref(),
+                        )
+                        .unwrap();
+                } else {
+                    #[cfg(debug_assertions)]
+                    println!("Received: {}", payload);
+                }
             } else if opcode == 9 {
+                #[cfg(debug_assertions)]
                 println!("Pong");
                 stream.write(&[138, 0]).unwrap();
                 stream.flush().unwrap();

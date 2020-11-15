@@ -37,15 +37,18 @@ impl ThreadPool {
 
 impl Drop for ThreadPool {
     fn drop(&mut self) {
+        #[cfg(debug_assertions)]
         println!("Sending terminate message to all workers.");
 
         for _ in &mut self.workers {
             self.sender.send(Message::Terminate).unwrap();
         }
 
+        #[cfg(debug_assertions)]
         println!("Shutting down all workers.");
 
         for worker in &mut self.workers {
+            #[cfg(debug_assertions)]
             println!("Shutting down worker: {}", worker.id);
 
             if let Some(thread) = worker.thread.take() {
