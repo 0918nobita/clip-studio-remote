@@ -1,4 +1,8 @@
+#[macro_use]
+extern crate clap;
+
 use base64;
+use clap::{App, Arg};
 use regex::bytes::Regex;
 use sha1::{Digest, Sha1};
 use std::fs;
@@ -10,7 +14,28 @@ extern crate server;
 use server::thread_pool::ThreadPool;
 
 fn main() {
-    let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
+    let app = App::new("clip-studio-remote")
+        .version(crate_version!())
+        .author(crate_authors!())
+        .arg(
+            Arg::with_name("port")
+                .short("p")
+                .long("port")
+                .takes_value(true)
+                .default_value("8080"),
+        )
+        .arg(
+            Arg::with_name("send-keys")
+                .short("k")
+                .long("send-keys")
+                .takes_value(false),
+        );
+
+    let matches = app.get_matches();
+
+    let port = matches.value_of("port").unwrap_or("8080");
+
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", port)).unwrap();
     let pool = ThreadPool::new(4);
 
     for stream in listener.incoming() {
