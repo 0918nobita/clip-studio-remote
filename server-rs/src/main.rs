@@ -11,13 +11,14 @@ use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};
 use std::process::{Command, Stdio};
 
-extern crate server;
-use server::config::Config;
-use server::thread_pool::ThreadPool;
+extern crate sendkeys_server;
+use sendkeys_server::config::Config;
+use sendkeys_server::thread_pool::ThreadPool;
 
 fn main() {
-    let app = App::new("clip-studio-remote")
+    let app = App::new(crate_name!())
         .version(crate_version!())
+        .about(crate_description!())
         .author(crate_authors!());
 
     let config = Config::parse(app);
@@ -49,13 +50,13 @@ fn handle_connection(mut stream: TcpStream, config: &Config) {
     match (method, path) {
         ("GET", "/") | ("GET", "/index.html") => {
             serve_index_page(&mut stream);
-        },
+        }
         ("GET", "/bundle.js") => {
             serve_js(&mut stream);
-        },
+        }
         ("GET", "/style.css") => {
             serve_css(&mut stream);
-        },
+        }
         ("GET", "/websocket") => {
             if let Some(key) = parse_ws_key(&buf) {
                 send_back_handshake(&mut stream, key);
@@ -63,7 +64,7 @@ fn handle_connection(mut stream: TcpStream, config: &Config) {
             } else {
                 serve_404_page(&mut stream);
             }
-        },
+        }
         _ => {
             serve_404_page(&mut stream);
         }
@@ -179,10 +180,17 @@ fn receive_ws_messages(stream: &mut TcpStream, config: &Config) {
                                 .as_ref(),
                         )
                         .unwrap();
-                } else {
-                    #[cfg(debug_assertions)]
-                    println!("Received: {}", payload);
+                } else if cfg!(target_os = "linux") && config.send_keys {
+                    Command::new("xdotool")
+                        .args(&["key", payload])
+                        .stdin(Stdio::null())
+                        .stdout(Stdio::null())
+                        .spawn()
+                        .expect("Failed to start a process for executing xdotool");
                 }
+
+                #[cfg(debug_assertions)]
+                println!("Received: {}", payload);
             } else if opcode == 9 {
                 #[cfg(debug_assertions)]
                 println!("Pong");

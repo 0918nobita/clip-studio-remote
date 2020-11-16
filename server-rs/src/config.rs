@@ -18,6 +18,7 @@ impl Config {
             )
             .arg(
                 Arg::with_name("send-keys")
+                    .help("Whether this program will execute sendkeys command (macOS: osascript, linux: xdotool)")
                     .short("k")
                     .long("send-keys")
                     .takes_value(false),
