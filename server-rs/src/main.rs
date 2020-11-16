@@ -141,15 +141,21 @@ fn send_back_handshake(stream: &mut TcpStream, key: String) {
 }
 
 fn receive_ws_messages(stream: &mut TcpStream, send_keys: bool) {
-    let mut child_stdin = if let Ok(child_process) = Command::new("osascript")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .args(&["-l", "JavaScript", "-i"])
-        .spawn()
-    {
-        child_process.stdin.unwrap()
+    let mut child_stdin = if cfg!(target_os = "macos") {
+        let mut command = Command::new("osascript");
+        let command =
+            command
+                .stdin(Stdio::piped())
+                .stdout(Stdio::null())
+                .args(&["-l", "JavaScript", "-i"]);
+        let child_stdin = if let Ok(child_process) = command.spawn() {
+            child_process.stdin.unwrap()
+        } else {
+            panic!("Faild to start a process for executing osascript")
+        };
+        Some(child_stdin)
     } else {
-        panic!("Faild to start a process for executing osascript")
+        None
     };
 
     loop {
@@ -172,8 +178,10 @@ fn receive_ws_messages(stream: &mut TcpStream, send_keys: bool) {
 
                 if cfg!(target_os = "macos") && send_keys {
                     child_stdin
+                        .as_mut()
+                        .unwrap()
                         .write(
-                            format!("Application('System Events').keystroke(\"{}\")\n", payload)
+                            format!("Application('System Events').keystroke('{}')\n", payload)
                                 .as_ref(),
                         )
                         .unwrap();
