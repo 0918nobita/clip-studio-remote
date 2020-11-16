@@ -3,6 +3,7 @@ extern crate clap;
 
 use base64;
 use clap::App;
+use httparse;
 use regex::bytes::Regex;
 use sha1::{Digest, Sha1};
 use std::fs;
@@ -38,28 +39,34 @@ fn main() {
 fn handle_connection(mut stream: TcpStream, config: &Config) {
     let mut buf = [0; 1024];
     stream.read(&mut buf).unwrap();
-    // println!("{}", String::from_utf8_lossy(&buf));
 
-    let get_index = b"GET / HTTP/1.1\r\n";
-    let get_js = b"GET /bundle.js HTTP/1.1\r\n";
-    let get_css = b"GET /style.css HTTP/1.1\r\n";
-    let websocket = b"GET /websocket HTTP/1.1\r\n";
+    let mut headers = [httparse::EMPTY_HEADER; 16];
+    let mut req = httparse::Request::new(&mut headers);
+    req.parse(&buf).expect("Failed to parse HTTP request");
+    let method = req.method.expect("Failed to parse HTTP request method");
+    let path = req.path.expect("Failed to parse HTTP request path");
 
-    if buf.starts_with(get_index) {
-        serve_index_page(&mut stream);
-    } else if buf.starts_with(get_css) {
-        serve_css(&mut stream);
-    } else if buf.starts_with(get_js) {
-        serve_js(&mut stream);
-    } else if buf.starts_with(websocket) {
-        if let Some(key) = parse_ws_key(&buf) {
-            send_back_handshake(&mut stream, key);
-            receive_ws_messages(&mut stream, config);
-        } else {
+    match (method, path) {
+        ("GET", "/") | ("GET", "/index.html") => {
+            serve_index_page(&mut stream);
+        },
+        ("GET", "/bundle.js") => {
+            serve_js(&mut stream);
+        },
+        ("GET", "/style.css") => {
+            serve_css(&mut stream);
+        },
+        ("GET", "/websocket") => {
+            if let Some(key) = parse_ws_key(&buf) {
+                send_back_handshake(&mut stream, key);
+                receive_ws_messages(&mut stream, config);
+            } else {
+                serve_404_page(&mut stream);
+            }
+        },
+        _ => {
             serve_404_page(&mut stream);
         }
-    } else {
-        serve_404_page(&mut stream);
     }
 }
 
