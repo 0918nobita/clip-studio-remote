@@ -2,7 +2,7 @@
 extern crate clap;
 
 use base64;
-use clap::{App, Arg};
+use clap::App;
 use regex::bytes::Regex;
 use sha1::{Digest, Sha1};
 use std::fs;
@@ -11,44 +11,31 @@ use std::net::{TcpListener, TcpStream};
 use std::process::{Command, Stdio};
 
 extern crate server;
+use server::config::Config;
 use server::thread_pool::ThreadPool;
 
 fn main() {
     let app = App::new("clip-studio-remote")
         .version(crate_version!())
-        .author(crate_authors!())
-        .arg(
-            Arg::with_name("port")
-                .short("p")
-                .long("port")
-                .takes_value(true)
-                .default_value("8080"),
-        )
-        .arg(
-            Arg::with_name("send-keys")
-                .short("k")
-                .long("send-keys")
-                .takes_value(false),
-        );
+        .author(crate_authors!());
 
-    let matches = app.get_matches();
+    let config = Config::parse(app);
+    #[cfg(debug_assertions)]
+    println!("config: {:?}", config);
 
-    let port = matches.value_of("port").unwrap_or("8080");
-    let send_keys = matches.is_present("send-keys");
-
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", port)).unwrap();
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", config.port)).unwrap();
     let pool = ThreadPool::new(4);
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
 
         pool.execute(move || {
-            handle_connection(stream, send_keys);
+            handle_connection(stream, &config);
         });
     }
 }
 
-fn handle_connection(mut stream: TcpStream, send_keys: bool) {
+fn handle_connection(mut stream: TcpStream, config: &Config) {
     let mut buf = [0; 1024];
     stream.read(&mut buf).unwrap();
     // println!("{}", String::from_utf8_lossy(&buf));
@@ -67,7 +54,7 @@ fn handle_connection(mut stream: TcpStream, send_keys: bool) {
     } else if buf.starts_with(websocket) {
         if let Some(key) = parse_ws_key(&buf) {
             send_back_handshake(&mut stream, key);
-            receive_ws_messages(&mut stream, send_keys);
+            receive_ws_messages(&mut stream, config);
         } else {
             serve_404_page(&mut stream);
         }
@@ -140,7 +127,7 @@ fn send_back_handshake(stream: &mut TcpStream, key: String) {
     stream.flush().unwrap();
 }
 
-fn receive_ws_messages(stream: &mut TcpStream, send_keys: bool) {
+fn receive_ws_messages(stream: &mut TcpStream, config: &Config) {
     let mut child_stdin = if cfg!(target_os = "macos") {
         let mut command = Command::new("osascript");
         let command =
@@ -176,7 +163,7 @@ fn receive_ws_messages(stream: &mut TcpStream, send_keys: bool) {
                 let payload = String::from_utf8(payload).unwrap();
                 let payload = payload.trim();
 
-                if cfg!(target_os = "macos") && send_keys {
+                if cfg!(target_os = "macos") && config.send_keys {
                     child_stdin
                         .as_mut()
                         .unwrap()
