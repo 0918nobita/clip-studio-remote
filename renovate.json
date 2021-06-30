@@ -16,6 +16,10 @@
     {
       "depTypeList": ["devDependencies"],
       "automerge": true
+    },
+    {
+      "packageNames": ["jest", "ts-jest"],
+      "groupName": "jestAndTSJest"
     }
   ]
 }
